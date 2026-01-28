@@ -1,13 +1,11 @@
-import type { WorkflowNode } from "../types/workflow";
+import type { WorkflowNode, BranchChildren } from "../types/workflow";
 import AddNodeMenu from "./AddNodeMenu";
 import { FaTrash } from "react-icons/fa";
 
-type Node = WorkflowNode;
-
 interface Props {
-  node: Node;
-  nodes: Record<string, Node>;
-  onAdd: (parentId: string, type: any) => void;
+  node: WorkflowNode;
+  nodes: Record<string, WorkflowNode>;
+  onAdd: (parentId: string, type: any, branch?: "true" | "false") => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, label: string) => void;
 }
@@ -20,7 +18,7 @@ export default function WorkflowNode({
   onEdit,
 }: Props) {
   return (
-    <div className="node" data-type={node.type}>
+    <div className={`node ${node.type.toLowerCase()}`}>
       <div className="node-header">
         <input
           value={node.label}
@@ -35,21 +33,44 @@ export default function WorkflowNode({
       </div>
 
       {node.type !== "END" && (
-        <AddNodeMenu onAdd={(type) => onAdd(node.id, type)} />
+        <AddNodeMenu
+          isBranch={node.type === "BRANCH"}
+          onAdd={(type, branch) => onAdd(node.id, type, branch)}
+        />
       )}
 
-      <div className="children">
-        {node.children.map((childId) => (
-          <WorkflowNode
-            key={childId}
-            node={nodes[childId]}
-            nodes={nodes}
-            onAdd={onAdd}
-            onDelete={onDelete}
-            onEdit={onEdit}
-          />
-        ))}
-      </div>
+      {node.type === "BRANCH" ? (
+        <div className="branch">
+          {(["true", "false"] as const).map((key) => (
+            <div key={key} className="branch-column">
+              <strong>{key.toUpperCase()}</strong>
+              {(node.children as BranchChildren)[key].map((id) => (
+                <WorkflowNode
+                  key={id}
+                  node={nodes[id]}
+                  nodes={nodes}
+                  onAdd={onAdd}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="children">
+          {(node.children as string[]).map((id) => (
+            <WorkflowNode
+              key={id}
+              node={nodes[id]}
+              nodes={nodes}
+              onAdd={onAdd}
+              onDelete={onDelete}
+              onEdit={onEdit}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -15,16 +15,39 @@ export default function WorkflowCanvas() {
     start: startNode,
   });
 
-  const addNode = (parentId: string, type: NodeType) => {
+  const addNode = (
+    parentId: string,
+    type: NodeType,
+    branch?: "true" | "false"
+  ) => {
     setNodes((prev) => {
+      const parent = prev[parentId];
       const newNode = createNode(type);
+
+      let updatedParent = parent;
+
+      if (parent.type === "BRANCH" && branch) {
+        updatedParent = {
+          ...parent,
+          children: {
+            ...(parent.children as any),
+            [branch]: [
+              ...(parent.children as any)[branch],
+              newNode.id,
+            ],
+          },
+        };
+      } else {
+        updatedParent = {
+          ...parent,
+          children: [...(parent.children as string[]), newNode.id],
+        };
+      }
+
       return {
         ...prev,
         [newNode.id]: newNode,
-        [parentId]: {
-          ...prev[parentId],
-          children: [...prev[parentId].children, newNode.id],
-        },
+        [parentId]: updatedParent,
       };
     });
   };
