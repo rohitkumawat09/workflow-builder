@@ -31,39 +31,38 @@ export const deleteNode = (
   nodeId: string
 ) => {
   const updated = structuredClone(nodes);
-  const deleted = updated[nodeId];
-  if (!deleted) return updated;
+  if (!updated[nodeId]) return updated;
 
+  const toDelete = new Set<string>();
+
+  const collect = (id: string) => {
+    if (!updated[id] || toDelete.has(id)) return;
+    toDelete.add(id);
+    const node = updated[id];
+    if (node.type === "BRANCH") {
+      const children = node.children as BranchChildren;
+      children.true.forEach(collect);
+      children.false.forEach(collect);
+    } else {
+      (node.children as string[]).forEach(collect);
+    }
+  };
+
+  collect(nodeId);
+
+  // Remove references to any deleted ids from remaining nodes
   Object.values(updated).forEach((node) => {
     if (node.type === "BRANCH") {
       const children = node.children as BranchChildren;
-
-      children.true = children.true.flatMap((id) =>
-        id === nodeId
-          ? Array.isArray(deleted.children)
-            ? deleted.children
-            : [...deleted.children.true, ...deleted.children.false]
-          : id
-      );
-
-      children.false = children.false.flatMap((id) =>
-        id === nodeId
-          ? Array.isArray(deleted.children)
-            ? deleted.children
-            : [...deleted.children.true, ...deleted.children.false]
-          : id
-      );
+      children.true = children.true.filter((id) => !toDelete.has(id));
+      children.false = children.false.filter((id) => !toDelete.has(id));
     } else {
-      node.children = (node.children as string[]).flatMap((id) =>
-        id === nodeId
-          ? Array.isArray(deleted.children)
-            ? deleted.children
-            : [...deleted.children.true, ...deleted.children.false]
-          : id
+      node.children = (node.children as string[]).filter(
+        (id) => !toDelete.has(id)
       );
     }
   });
 
-  delete updated[nodeId];
+  toDelete.forEach((id) => delete updated[id]);
   return updated;
 };
